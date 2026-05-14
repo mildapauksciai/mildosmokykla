@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<script src="birds.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mildos paukščių mokykla</title>
+<!-- PWA meta tags (makes it installable as a real app) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mildos paukščių mokykla">
+<meta name="theme-color" content="#e6e9d4">
+<link rel="apple-touch-icon" href="https://via.placeholder.com/180x180/2f5d3a/ffffff?text=🪶">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&display=swap" rel="stylesheet">
+<style>
+  /* ════════════════════════════════════════════════════════════════════
+     📱  MOBILE LAYOUT KNOBS — edit these to move stuff around
+     ════════════════════════════════════════════════════════════════════
+     Most knobs below control the HOME PAGE on phones.
+     The "Study page — bird image" block at the bottom controls the
+     image stage on the study screen (both viewing and revealing).
+     Save the file, refresh the browser, see the change.
+
+     Values use normal CSS units:
+       px   = pixels (fixed)
+       %    = percent of the parent / screen
+       vw   = percent of screen WIDTH  (1vw = 1% of width)
+       vh   = percent of screen HEIGHT
+     Negative values are allowed (useful for shifting things left / up).
+     ════════════════════════════════════════════════════════════════════ */
+  :root{
+    /* ════════════════════════════════════════════════════════════════
+       📐  HOME LAYOUT
+       Milda + the controls (2 buttons + Matyta + Išmokta) form ONE
+       rigid composition. The controls are GLUED to a point next to
+       Milda's binoculars — that anchor is a fixed % of her own size,
+       so it tracks the binoculars no matter how big she gets.
+       On the iPhone preview this matches the original file; on other
+       sizes Milda just scales and the background grows around her —
+       nothing inside the composition shifts relative to anything else.
+       ════════════════════════════════════════════════════════════════ */
+
+    /* ── Milda (the girl illustration) ──────────────────────────────── */
+    --milda-height:   90svh;   /* how tall she is (svh = % of screen height) */
+    --milda-shift-x: -17%;     /* PHONES ONLY: how far she's pushed off the
+                                  left edge (% of her width). On tablet/desktop
+                                  the whole composition is centred instead. */
+
+    /* ── Controls anchor — a point next to the binoculars ────────────
+       Both are % of Milda's OWN rendered box, so the controls stay
+       locked next to her binoculars at every size. This is the
+       "calculated" anchor — top-left corner of the controls column. */
+    --control-x:     68.4%;    /* across Milda: bigger = further right */
+    --control-top:   25.9%;    /* down Milda:   bigger = further down  */
+    --control-width: 112px;    /* width of the controls column         */
+    --control-gap:   30px;     /* gap between the buttons row and the stat cards */
+
+    /* ── Heading: "Pažink paukščius su Milda" ───────────────────────── */
+    /*   clamp(MIN, FLUID, MAX) — picks FLUID, but never below MIN/above MAX */
+    --hero-size:    clamp(26px, 7.5vw, 56px);
+    --hero-top:     56px;      /* distance below the header bar */
+    --hero-left:    17px;      /* distance from the left edge   */
+    --hero-align:   left;      /* text alignment: left | center | right */
+
+    /* ── The two circular mode buttons ──────────────────────────────── */
+    --mode-size:    50px;      /* diameter of each circle */
+    --mode-gap:     12px;      /* space between the two circles */
+
+    /* ── Stat cards (Matyta / Išmokta) ──────────────────────────────── */
+    --stat-gap:        8px;    /* space between the two cards */
+    --stat-padding:    10px 14px;  /* inner padding (vertical horizontal) */
+    --stat-radius:     14px;   /* corner roundness */
+    --stat-value-size: 24px;   /* the big number ("11/397" or "0") */
+    --stat-label-size: 10px;   /* the small caption ("MATYTA") */
+
+    /* ── Study page — bird image ────────────────────────────────────
+       Format is `width / height`. Bigger second number = TALLER photo.
+       --stage-max-height caps the photo so it doesn't push the grading
+       buttons off-screen on tall phones (vh value, or `none`).         */
+    --stage-aspect:     1/1;
+    --stage-max-height: 60vh;
+  }
+  /* ════════════════════════════════════════════════════════════════════
+     End of knobs. Below is the rest of the styling — usually no need
+     to touch it. The values above feed into the rules further down.
+     ════════════════════════════════════════════════════════════════════ */
+
+  :root{
+    --bg: #e6e9d4;
+    --bg-tint: #eef0db;
+    --ink: #1f2a1c;
+    --ink-soft: #5e6e54;
+    --card: #ffffff;
+    --line: #d6dac0;
+    --primary: #2f5d3a;
+    --primary-deep: #244a2d;
+    --primary-ink: #f4f7eb;
+    --accent: #c97a2b;
+    --accent-soft: #f1d9b6;
+    --soft: #f4f4e6;
+    --shadow-sm: 0 1px 2px rgba(20,30,15,.05);
+    --shadow: 0 1px 2px rgba(20,30,15,.05), 0 10px 24px -12px rgba(20,30,15,.18);
+    --shadow-lg: 0 2px 4px rgba(20,30,15,.05), 0 20px 40px -16px rgba(20,30,15,.25);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg)}
+  body{
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  h1,h2,h3,.serif{
+    font-family: "Fraunces", Georgia, "Times New Roman", serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+  }
+  button{font:inherit;cursor:pointer;border:0;background:none;color:inherit;padding:0}
+  a{color:inherit;text-decoration:none}
+  img{display:block;max-width:100%}
+  .wrap{ max-width: 1080px; margin: 0 auto; padding: 14px 14px 14px; }
+  @media (min-width: 720px){ .wrap{ padding: 22px 20px 40px; } }
+  /* Home page */
+  body.home-page{ overflow: hidden; height: 100dvh; height: 100svh; }
+  body.home-page .wrap{ padding: 0; max-width: none; }
+  /* Header */
+  header.bar{
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+  }
+  .brand{
+    font-family: "Fraunces", serif; font-weight: 900; font-size: 18px;
+    letter-spacing: -0.02em;
+    display: inline-flex; align-items: baseline; gap: 6px;
+  }
+  .brand .quill{
+    display: inline-block; transform: rotate(-12deg) translateY(2px); font-size: 18px;
+  }
+  @media (min-width: 720px){
+    .brand{ font-size: 22px; gap: 8px; }
+    .brand .quill{ font-size: 22px; }
+  }
+  .reset{
+    font-size: 12px; color: var(--ink-soft);
+    padding: 6px 10px; border-radius: 8px;
+    transition: background .15s, color .15s;
+  }
+  .reset:hover{ color: var(--ink); background: rgba(31,42,28,0.06) }
+  /* Home scene */
+  .home{
+    position: relative;
+    height: 100dvh;
+    height: 100svh;
+    width: 100%;
+    overflow: hidden;
+  }
+  .home > .bar{
+    position: absolute;
+    top: 12px; left: 14px; right: 14px;
+    z-index: 5;
+    padding: 0;
+  }
+  @media (min-width: 720px){
+    .home > .bar{ top: 18px; left: 28px; right: 28px; }
+  }
+  /* Milda + controls = ONE rigid composition, pinned bottom-left
+     exactly like the original file. The controls are anchored to a
+     fixed % of Milda's box, so they always sit next to her binoculars.
+     When the screen grows, only Milda + the empty background grow —
+     the composition itself never re-arranges. */
+  .milda-frame{
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    z-index: 1;
+    /* shrink-wraps Milda so .controls can anchor to her real size */
+    transform: translateX(var(--milda-shift-x));
+  }
+  .milda-bg{
+    display: block;
+    height: var(--milda-height);
+    width: auto;          /* width follows height, so aspect ratio is kept */
+    max-width: none;      /* IMPORTANT: overrides the global img{max-width:100%}.
+                             Without this, on a narrow phone the image gets
+                             width-capped while height stays fixed → squished. */
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .controls{
+    position: absolute;
+    left: var(--control-x);     /* % of Milda's width  → tracks the binoculars */
+    top: var(--control-top);    /* % of Milda's height → tracks the binoculars */
+    width: var(--control-width);
+    display: flex;
+    flex-direction: column;
+    gap: var(--control-gap);
+    z-index: 2;
+  }
+  .controls > * { width: 100%; }
+  /* Phones: pinned to the left and clipped, exactly like the original.
+     Tablet & desktop: the whole composition is CENTRED — Milda just
+     gets a touch taller and the background grows around her. The
+     controls follow automatically since their anchor is % based. */
+  @media (min-width: 720px){
+    :root{ --milda-height: 92svh; }
+    .milda-frame{ left: 50%; transform: translateX(-50%); }
+  }
+  @media (min-width: 1024px){
+    :root{ --milda-height: 94svh; }
+    .hero-text h1{ font-size: clamp(32px, 4.5vw, 58px); }
+  }
+  .hero-text{
+    position: absolute;
+    top: var(--hero-top);
+    left: var(--hero-left);
+    z-index: 3;
+    max-width: min(72vw, 440px);
+    text-align: var(--hero-align);
+  }
+  @media (min-width: 720px){
+    .hero-text{ top: 74px; left: 32px; }
+  }
+  .hero-text h1{
+    margin: 0;
+    font-weight: 900;
+    font-size: var(--hero-size);
+    line-height: 1.04;
+    text-shadow:
+      0 0 14px rgba(230, 233, 212, 0.95),
+      0 0 6px rgba(230, 233, 212, 0.95);
+  }
+  .hero-text h1 em{ font-style: normal; color: var(--primary); position: relative; }
+  .hero-text h1 em::after{
+    content: ""; position: absolute; left: 2%; right: 2%; bottom: -0.06em;
+    height: 0.16em; background: var(--accent-soft); z-index: -1; border-radius: 2px;
+    opacity: 0.55;
+  }
+  .hero-text p.kicker{
+    margin: 6px 0 0; color: var(--ink-soft); font-size: 12px;
+    font-style: italic;
+    text-shadow: 0 0 8px rgba(230, 233, 212, 0.95);
+  }
+  @media (min-width: 720px){
+    .hero-text p.kicker{ margin-top: 12px; font-size: 14px; }
+  }
+  /* Stats */
+  .stats{
+    display: flex;
+    flex-direction: column;
+    gap: var(--stat-gap);
+  }
+  .stat{
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--stat-radius);
+    padding: var(--stat-padding);
+    box-shadow: var(--shadow-sm);
+    width: 100%;
+    /* Flex column so the number + label stay centred */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .stat .v{
+    font-family: "Fraunces", serif; font-weight: 900;
+    font-size: var(--stat-value-size); color: var(--primary); line-height: 1;
+    font-feature-settings: "lnum";
+  }
+  .stat .l{
+    font-size: var(--stat-label-size); color: var(--ink-soft); margin-top: 4px;
+    text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+  }
+  @media (min-width: 720px){
+    .stats{ gap: 10px; }
+    .stat{ padding: 14px 16px; border-radius: 16px; }
+    .stat .v{ font-size: 30px; }
+    .stat .l{ font-size: 11px; margin-top: 4px; letter-spacing: 0.1em; }
+  }
+  /* Modes — circular icon-only buttons */
+  .modes{
+    display: flex;
+    gap: var(--mode-gap);
+    justify-content: center;
+  }
+  .mode{
+    flex: 0 0 auto;
+    width: var(--mode-size); height: var(--mode-size);
+    border-radius: 50%;
+    padding: 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    display: grid; place-items: center;
+    transition: transform .15s ease, box-shadow .2s ease, border-color .15s, background .15s;
+    box-shadow: var(--shadow-sm);
+  }
+  .mode:hover{
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+    border-color: #c5cba8;
+    background: var(--bg-tint);
+  }
+  .mode .icon{
+    width: 22px; height: 22px;
+    background: none; border: 0;
+    color: var(--ink);
+    display: grid; place-items: center;
+  }
+  .mode .icon svg{ width: 100%; height: 100%; display: block; }
+  .mode .body, .mode .arrow{ display: none; }
+  @media (min-width: 720px){
+    .mode{ box-shadow: var(--shadow); }
+    .mode:hover{ box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+  }
+  /* Study page */
+  .topbar{ display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .back{
+    font-size: 14px; color: var(--ink-soft);
+    padding: 6px 8px; border-radius: 8px; margin-left: -8px;
+    transition: color .15s, background .15s;
+  }
+  .back:hover{ color: var(--ink); background: rgba(31,42,28,0.06); }
+  .badge{
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--ink-soft); font-weight: 600;
+  }
+  .card{
+    margin: 18px auto 0;
+    max-width: 620px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .stage{
+    aspect-ratio: var(--stage-aspect);
+    max-height: var(--stage-max-height);
+    background: var(--soft);
+    display: grid; place-items: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .stage > img{ width: 100%; height: 100%; object-fit: cover; }
+  .stage .sound{
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 24px; padding: 32px 24px; width: 100%; height: 100%;
+    text-align: center;
+  }
+  .stage .sound audio{
+    width: 100%;
+    max-width: 420px;
+  }
+  .stage .sound .prompt{
+    font-family: "Fraunces", serif; color: var(--ink-soft);
+    font-size: 14px; font-style: italic;
+  }
+  audio{ width: 100%; max-width: 380px; height: 40px; }
+  .card-body{ padding: 20px 22px 22px; text-align: center; }
+  .reveal{
+    width: 100%;
+    background: var(--primary);
+    color: var(--primary-ink);
+    border-radius: 14px;
+    padding: 16px 20px;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.01em;
+    box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 8px 18px -8px rgba(36,74,45,.55);
+    transition: transform .1s ease, background .15s ease, box-shadow .2s;
+  }
+  .reveal:hover{ background: var(--primary-deep); }
+  .reveal:active{ transform: translateY(1px); }
+  .name{
+    font-family: "Fraunces", serif;
+    font-size: clamp(28px, 5.4vw, 36px);
+    font-weight: 900;
+    color: var(--primary);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .meta{ color: var(--ink-soft); font-size: 14px; margin-top: 6px; }
+  .meta i{ font-style: italic; }
+  .post-audio{ margin: 14px auto 0; max-width: 380px; }
+  .grades{
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin-top: 18px;
+  }
+  .g{
+    padding: 11px 4px 9px; border-radius: 12px;
+    font-weight: 700; font-size: 13px;
+    transition: transform .08s ease, filter .15s;
+    display: flex; flex-direction: column; gap: 2px; align-items: center;
+  }
+  .g .num{ font-family: "Fraunces", serif; font-size: 10px; opacity: 0.55; font-weight: 700; }
+  .g:hover{ filter: brightness(0.97); }
+  .g:active{ transform: translateY(1px); }
+  .g.again{ background: #f3d8d1; color: #6b2618; }
+  .g.hard{ background: #f1e3c5; color: #5a4419; }
+  .g.good{ background: var(--primary); color: var(--primary-ink); }
+  .g.easy{ background: #d8e6c4; color: #2d4419; }
+  .empty{
+    margin: 32px auto; max-width: 480px; text-align: center;
+    background: var(--card); border: 1px solid var(--line); border-radius: 24px;
+    padding: 36px 24px; box-shadow: var(--shadow);
+  }
+  .empty img{ width: 180px; height: auto; margin: 0 auto 8px; }
+  .empty h2{ font-size: 30px; margin: 0 0 4px; font-weight: 900; }
+  .empty p{ color: var(--ink-soft); margin: 0 0 20px; }
+  .empty .return{
+    display: inline-block; padding: 10px 18px;
+    border-radius: 12px; background: var(--primary); color: var(--primary-ink);
+    font-weight: 600; font-size: 14px;
+    transition: background .15s;
+  }
+  .empty .return:hover{ background: var(--primary-deep); }
+  .hint{
+    margin-top: 14px; text-align: center;
+    font-size: 11px; color: var(--ink-soft); opacity: 0.7;
+    letter-spacing: 0.04em;
+  }
+  @media (max-width: 520px){ .hint{ display: none; } }
+  .fade-in{ animation: fadeIn .25s ease both; }
+  @keyframes fadeIn{
+    from{ opacity: 0; transform: translateY(4px); }
+    to{ opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+/* ---------- SRS (lite SM-2) ---------- */
+const STORE_KEY = "milda-bird-srs-v1";
+const MIN = 60 * 1000, DAY = 24 * 60 * 60 * 1000;
+function loadState(){
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveState(s){ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+function defaultCard(){ return { ease: 2.4, interval: 0, due: 0, reps: 0, lapses: 0 }; }
+function nextCardId(){
+  const state = loadState();
+  const now = Date.now();
+
+  // 1) Cards already studied (reps > 0) that are due NOW.
+  //    Pick the most overdue. This is the key priority: failed/learning
+  //    cards must come back as soon as their short interval expires,
+  //    instead of getting stuck behind the entire deck of unseen birds.
+  let dueId = null, dueOldest = Infinity;
+  for(const b of BIRDS){
+    const c = state[b.id];
+    if(!c || !c.reps) continue;       // skip unseen cards in this pass
+    const d = c.due || 0;
+    if(d <= now && d < dueOldest){ dueId = b.id; dueOldest = d; }
+  }
+  if(dueId) return dueId;
+
+  // 2) Otherwise introduce a new card the user hasn't seen yet
+  //    (taken in BIRDS array order — change order in birds.js to reorder).
+  for(const b of BIRDS){
+    const c = state[b.id];
+    if(!c || !c.reps) return b.id;
+  }
+
+  // 3) Everything has been studied and nothing is due yet — return the
+  //    soonest-due card so the session never gets stuck on an empty queue.
+  let nextId = null, nextDue = Infinity;
+  for(const b of BIRDS){
+    const c = state[b.id] || defaultCard();
+    const d = c.due || 0;
+    if(d < nextDue){ nextId = b.id; nextDue = d; }
+  }
+  return nextId;
+}
+function grade(id, g){
+  const state = loadState();
+  const c = state[id] || defaultCard();
+  const now = Date.now();
+  if(g === "again"){
+    c.ease = Math.max(1.3, c.ease - 0.2);
+    c.interval = 1 * MIN;
+    c.lapses += 1;
+  } else if(g === "hard"){
+    c.ease = Math.max(1.3, c.ease - 0.15);
+    if(c.reps === 0) c.interval = 6 * MIN;
+    else if(c.interval < 1 * DAY) c.interval = 1 * DAY;
+    else c.interval = Math.round(c.interval * 1.2);
+  } else if(g === "good"){
+    if(c.reps === 0) c.interval = 10 * MIN;
+    else if(c.interval < 1 * DAY) c.interval = 1 * DAY;
+    else c.interval = Math.round(c.interval * c.ease);
+  } else if(g === "easy"){
+    c.ease = c.ease + 0.15;
+    if(c.reps === 0) c.interval = 4 * DAY;
+    else c.interval = Math.round(c.interval * c.ease * 1.3);
+  }
+  c.reps += 1;
+  c.due = now + c.interval;
+  state[id] = c;
+  saveState(state);
+}
+function getStats(){
+  const state = loadState();
+  let seen = 0, mastered = 0, due = 0;
+  const now = Date.now();
+  for(const b of BIRDS){
+    const c = state[b.id];
+    if(!c) continue;
+    if(c.reps > 0) seen += 1;
+    if(c.reps >= 3 && c.interval >= 7 * DAY) mastered += 1;
+    if((c.due || 0) <= now) due += 1;
+  }
+  return { total: BIRDS.length, seen, mastered, due };
+}
+function resetProgress(){ localStorage.removeItem(STORE_KEY); }
+/* ---------- routing ---------- */
+function getRoute(){
+  const h = location.hash || "#/";
+  const [path, qs] = h.split("?");
+  const params = new URLSearchParams(qs || "");
+  return { path: path.replace(/^#/, "") || "/", params };
+}
+function nav(path){ location.hash = path; }
+/* ---------- helpers ---------- */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => (
+    {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]
+  ));
+}
+/* ---------- views ---------- */
+let currentRevealed = false;
+let currentBirdId = null;
+
+function renderHome(){
+  const s = getStats();
+  document.getElementById("app").innerHTML = `
+    <section class="home fade-in">
+      <header class="bar">
+        <div class="brand"><span class="quill">🪶</span>Mildos paukščių mokykla</div>
+        <button class="reset" id="resetBtn" title="Atstatyti visą progresą">atstatyti</button>
+      </header>
+      <div class="hero-text">
+        <h1>Pažink paukščius <br><em>su Milda</em></h1>
+      </div>
+      <div class="milda-frame">
+        <img class="milda-bg" src="${MILDA}" alt="Milda paukščių stebėtoja">
+        <div class="controls">
+          <div class="modes">
+          <button class="mode" data-go="/study?mode=image" title="Vaizdo režimas" aria-label="Vaizdo režimas">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19c4-1 6-4 7-7 1.4-3.6 4-6 8-6 1.5 0 2.5.5 3 1-1 1-2 1.5-3 2 .5 1 1 2.5 1 4 0 4-3 7-8 7-3 0-5-.4-8-1z"/><circle cx="17" cy="9" r=".7" fill="currentColor"/><path d="M11 19l-1 3M14 19l0 3"/></svg></div>
+            <div class="body"><div class="t">Vaizdo režimas</div><div class="d">Pamatyk paukštį – įvardink.</div></div>
+            <div class="arrow">→</div>
+          </button>
+          <button class="mode" data-go="/study?mode=sound" title="Garso režimas" aria-label="Garso režimas">
+            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5" fill="currentColor" stroke="none"/><circle cx="16.5" cy="16" r="2.5" fill="currentColor" stroke="none"/></svg></div>
+            <div class="body"><div class="t">Garso režimas</div><div class="d">Išgirsk giesmę – įvardink.</div></div>
+            <div class="arrow">→</div>
+          </button>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="v">${s.seen}/${s.total}</div><div class="l">Matyta</div></div>
+          <div class="stat"><div class="v">${s.mastered}</div><div class="l">Išmokta</div></div>
+        </div>
+        </div>
+      </div>
+    </section>
+  `;
+  document.getElementById("resetBtn").onclick = () => {
+    if(confirm("Atstatyti visą progresą?")){ resetProgress(); renderHome(); }
+  };
+  document.querySelectorAll(".mode[data-go]").forEach(el => {
+    el.addEventListener("click", () => nav(el.dataset.go));
+  });
+}
+
+function renderStudy(mode){
+  const id = nextCardId();
+  currentBirdId = id;
+  currentRevealed = false;
+  const bird = BIRDS.find(b => b.id === id);
+  const app = document.getElementById("app");
+  if(!bird){
+    app.innerHTML = `
+      <header class="bar">
+        <div class="brand"><span class="quill">🪶</span>Mildos paukščių mokykla</div>
+      </header>
+      <div class="empty fade-in">
+        <img src="${MILDA}" alt="">
+        <h2>Šiandien viskas</h2>
+        <p>Šiandien daugiau pakartoti nereikia. Puikus darbas.</p>
+        <a class="return" href="#/">← Grįžti į pradžią</a>
+      </div>`;
+    return;
+  }
+
+  let stageHTML = '';
+  if(mode === "image"){
+    stageHTML = `<div class="stage"><img src="${escapeHtml(bird.image)}" alt="" referrerpolicy="no-referrer"
+         onerror="this.onerror=null;this.src='${MILDA}';this.style.objectFit='contain';this.style.padding='40px';"></div>`;
+  } else {
+    // GARSO REŽIMAS – only audio + prompt
+    stageHTML = `<div class="stage">
+      <div class="sound">
+        <audio id="songAudio" controls preload="auto" src="${escapeHtml(bird.audio)}"></audio>
+        <div class="prompt">Pasiklausyk ir įvardink dainininką.</div>
+      </div>
+    </div>`;
+  }
+
+  app.innerHTML = `
+    <div class="topbar">
+      <a class="back" href="#/">← Pradžia</a>
+      <span class="badge">${mode === "image" ? "vaizdo" : "garso"} režimas</span>
+    </div>
+    <div class="card fade-in">
+      ${stageHTML}
+      <div class="card-body" id="answer"></div>
+    </div>
+    <div class="hint">tarpas / enter — atskleisti · 1 vėl · 2 sunku · 3 gerai · 4 lengva</div>
+  `;
+
+  renderAnswer(bird, mode);
+
+  if(mode === "sound"){
+    const a = document.getElementById("songAudio");
+    if(a) a.play().catch(() => {});
+  }
+}
+
+function renderAnswer(bird, mode){
+  const el = document.getElementById("answer");
+  if(!currentRevealed){
+    el.innerHTML = `<button class="reveal" id="revealBtn">Parodyti atsakymą</button>`;
+    document.getElementById("revealBtn").onclick = reveal;
+    return;
+  }
+
+  // No extra image in the answer section for garso režimas (image is now in the stage)
+  const imageHTML = "";
+  const audioHTML = `<audio class="post-audio" controls src="${escapeHtml(bird.audio)}"></audio>`;
+
+  // english / latin are optional in the bird data — only show the line
+  // if at least one of them exists (otherwise it printed "undefined · undefined")
+  const metaParts = [];
+  if(bird.english) metaParts.push(escapeHtml(bird.english));
+  if(bird.latin)   metaParts.push(`<i>${escapeHtml(bird.latin)}</i>`);
+  const metaHTML = metaParts.length
+    ? `<div class="meta">${metaParts.join(" · ")}</div>`
+    : "";
+
+  el.innerHTML = `
+    <div class="name">${escapeHtml(bird.name)}</div>
+    ${metaHTML}
+    ${imageHTML}
+    ${audioHTML}
+    <div class="grades">
+      <button class="g again" data-g="again"><span class="num">1</span>Vėl</button>
+      <button class="g hard" data-g="hard"><span class="num">2</span>Sunku</button>
+      <button class="g good" data-g="good"><span class="num">3</span>Gerai</button>
+      <button class="g easy" data-g="easy"><span class="num">4</span>Lengva</button>
+    </div>
+  `;
+
+  el.querySelectorAll(".g").forEach(b =>
+    b.addEventListener("click", () => answer(b.dataset.g))
+  );
+}
+
+function reveal(){
+  currentRevealed = true;
+  const r = getRoute();
+  const mode = r.params.get("mode") || "image";
+  const bird = BIRDS.find(b => b.id === currentBirdId);
+  if(!bird) return;
+
+  // In garso režimas the image now appears directly in the existing .stage area
+  if (mode === "sound") {
+    const stage = document.querySelector('.stage');
+    if (stage) {
+      stage.innerHTML = `
+        <img src="${escapeHtml(bird.image)}" alt="" referrerpolicy="no-referrer"
+             onerror="this.onerror=null;this.src='${MILDA}';this.style.objectFit='contain';this.style.padding='40px';"
+             style="width:100%; height:100%; object-fit:cover;">
+      `;
+    }
+  }
+
+  renderAnswer(bird, mode);
+}
+
+function answer(g){
+  if(currentBirdId) grade(currentBirdId, g);
+  const r = getRoute();
+  renderStudy(r.params.get("mode") || "image");
+}
+
+/* keyboard */
+document.addEventListener("keydown", (e) => {
+  if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const r = getRoute();
+  if(r.path !== "/study") return;
+  if(!currentRevealed){
+    if(e.key === " " || e.key === "Enter"){ e.preventDefault(); reveal(); }
+    return;
+  }
+  const map = { "1": "again", "2": "hard", "3": "good", "4": "easy" };
+  if(map[e.key]) answer(map[e.key]);
+});
+
+/* router */
+function route(){
+  const r = getRoute();
+  if(r.path === "/study"){
+    document.body.classList.remove("home-page");
+    renderStudy(r.params.get("mode") || "image");
+  } else {
+    document.body.classList.add("home-page");
+    renderHome();
+  }
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+window.addEventListener("DOMContentLoaded", route);
+if(document.readyState !== "loading") route();
+</script>
+</body>
+</html>
