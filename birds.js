@@ -98,7 +98,7 @@ const BIRDS = [
   },
   {
     "id": "bird_017",
-    "name": "Rudagalė Antis",
+    "name": "Rudagalvė Antis",
     "image": "clips/output/images/bird_017.png",
     "audio": "clips/output/audio/bird_017.mp3",
   },
