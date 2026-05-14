@@ -437,39 +437,48 @@
 <body>
 <div class="wrap" id="app"></div>
 <script>
-/* ---------- SRS (lite SM-2) ---------- */
-const STORE_KEY = "milda-bird-srs-v1";
+/* ---------- SRS (lite SM-2) ----------
+   State is keyed by `${birdId}__${mode}` so vaizdo režimas and
+   garso režimas evolve independently — failing a bird's call won't
+   reset your visual progress on the same bird, and vice versa.
+
+   Scheduling priority (see nextCardId): cards you've FAILED or are
+   still learning come back the moment their short interval expires,
+   AHEAD of any never-seen birds — so you never have to wade through
+   the whole 400-bird deck to find the ones you missed.
+
+   One storage key, no migration — old progress from earlier builds
+   is simply ignored; hit "atstatyti" once to clear it out.           */
+const STORE_KEY = "milda-bird-srs-v2";
 const MIN = 60 * 1000, DAY = 24 * 60 * 60 * 1000;
+const cardKey = (id, mode) => `${id}__${mode}`;
 function loadState(){
   try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
   catch { return {}; }
 }
 function saveState(s){ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
 function defaultCard(){ return { ease: 2.4, interval: 0, due: 0, reps: 0, lapses: 0 }; }
-/* Each bird has a SEPARATE card per mode, so studying it in "image"
-   mode never touches its "sound" progress (and vice versa). */
-function cardKey(mode, id){ return mode + ":" + id; }
 function nextCardId(mode){
   const state = loadState();
   const now = Date.now();
 
-  // 1) Cards already studied (reps > 0) in THIS mode that are due NOW.
-  //    Pick the most overdue. This is the key priority: failed/learning
-  //    cards must come back as soon as their short interval expires,
-  //    instead of getting stuck behind the entire deck of unseen birds.
+  // 1) Cards already studied IN THIS MODE that are due NOW.
+  //    Most overdue first. Failed/learning cards have tiny intervals
+  //    ("Vėl" = 1 min), so they resurface almost immediately —
+  //    BEFORE step 2 ever introduces a new bird.
   let dueId = null, dueOldest = Infinity;
   for(const b of BIRDS){
-    const c = state[cardKey(mode, b.id)];
-    if(!c || !c.reps) continue;       // skip unseen cards in this pass
+    const c = state[cardKey(b.id, mode)];
+    if(!c || !c.reps) continue;
     const d = c.due || 0;
     if(d <= now && d < dueOldest){ dueId = b.id; dueOldest = d; }
   }
   if(dueId) return dueId;
 
-  // 2) Otherwise introduce a new card not yet seen IN THIS MODE
+  // 2) Otherwise introduce a new card not yet seen in this mode
   //    (taken in BIRDS array order — change order in birds.js to reorder).
   for(const b of BIRDS){
-    const c = state[cardKey(mode, b.id)];
+    const c = state[cardKey(b.id, mode)];
     if(!c || !c.reps) return b.id;
   }
 
@@ -477,15 +486,15 @@ function nextCardId(mode){
   //    return the soonest-due card so the session never gets stuck.
   let nextId = null, nextDue = Infinity;
   for(const b of BIRDS){
-    const c = state[cardKey(mode, b.id)] || defaultCard();
+    const c = state[cardKey(b.id, mode)] || defaultCard();
     const d = c.due || 0;
     if(d < nextDue){ nextId = b.id; nextDue = d; }
   }
   return nextId;
 }
-function grade(id, g, mode){
+function grade(id, mode, g){
   const state = loadState();
-  const key = cardKey(mode, id);
+  const key = cardKey(id, mode);
   const c = state[key] || defaultCard();
   const now = Date.now();
   if(g === "again"){
@@ -512,24 +521,18 @@ function grade(id, g, mode){
   saveState(state);
 }
 function getStats(){
-  // Home-page totals = OVERALL progress: a bird counts as seen / mastered
-  // if it's been seen / mastered in EITHER mode.
+  // Home-page totals (Matyta / Išmokta) refer to VAIZDO REŽIMAS only —
+  // the visual-mode cards. Garso režimas is tracked separately and not
+  // shown here.
   const state = loadState();
-  const MODES = ["image", "sound"];
   let seen = 0, mastered = 0, due = 0;
   const now = Date.now();
   for(const b of BIRDS){
-    let anySeen = false, anyMastered = false, anyDue = false;
-    for(const m of MODES){
-      const c = state[cardKey(m, b.id)];
-      if(!c) continue;
-      if(c.reps > 0) anySeen = true;
-      if(c.reps >= 3 && c.interval >= 7 * DAY) anyMastered = true;
-      if((c.due || 0) <= now) anyDue = true;
-    }
-    if(anySeen) seen += 1;
-    if(anyMastered) mastered += 1;
-    if(anyDue) due += 1;
+    const c = state[cardKey(b.id, "image")];
+    if(!c) continue;
+    if(c.reps > 0) seen += 1;
+    if(c.reps >= 3 && c.interval >= 7 * DAY) mastered += 1;
+    if((c.due || 0) <= now) due += 1;
   }
   return { total: BIRDS.length, seen, mastered, due };
 }
@@ -712,7 +715,7 @@ function reveal(){
 function answer(g){
   const r = getRoute();
   const mode = r.params.get("mode") || "image";
-  if(currentBirdId) grade(currentBirdId, g, mode);
+  if(currentBirdId) grade(currentBirdId, mode, g);
   renderStudy(mode);
 }
 
